@@ -10,6 +10,9 @@ export const CONFIG = {
   http: {
     port: parseInt(process.env.HTTP_PORT || '3000', 10),
   },
+  websocket: {
+    port: parseInt(process.env.WEBSOCKET_PORT || '3002', 10),
+  },
   log: {
     level: process.env.LOG_LEVEL || 'info',
   },

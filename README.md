@@ -55,6 +55,7 @@ all incoming data is transformed into a unified `BridgeMessage`:
 ### ingress adapters
 - MQTT (Eclipse Mosquitto compatible);
 - HTTP REST (`POST /ingest/:type`)
+- WebSocket ingress (`ws://localhost:3002`)
 
 ### corepipline
 - Normalizer: validates and transforms raw input into BridgeMessage;
@@ -115,6 +116,7 @@ Expected output:
 [INFO] HTTP listening on port 3000
 [INFO] MQTT connected to mqtt://localhost:1883
 [INFO] MQTT subscribed to home/#
+[INFO] WebSocket listening on port 3002
 ```
 ---
 
@@ -147,6 +149,26 @@ response:
 ```json
 { "ok": true, "id": "uuid" }
 ```
+
+### websocket
+
+use a WebSocket client to connect to the configured port and send a JSON payload:
+
+```json
+{ "type": "temperature", "payload": { "value": 23.4, "unit": "celsius" } }
+```
+
+example client URL:
+
+```
+ws://localhost:3002
+```
+
+the adapter will reply with:
+
+```json
+{ "ok": true, "id": "uuid" }
+```
 ---
 
 ## configuration
@@ -155,6 +177,7 @@ response:
 MQTT_BROKER_URL=mqtt://localhost:1883
 MQTT_TOPICS=home/#
 HTTP_PORT=3000
+WEBSOCKET_PORT=3002
 LOG_LEVEL=info
 ```
 ---
@@ -166,6 +189,7 @@ src/
   adapters/
     mqtt-ingress.ts
     http-ingress.ts
+    websocket-ingress.ts
     webhook-egress.ts
 
   core/
@@ -189,6 +213,7 @@ tests/
   dispatcher.test.ts
   mqtt-ingress.test.ts
   http-ingress.test.ts
+  websocket-ingress.test.ts
   webhook-egress.test.ts
   logger.test.ts
 
@@ -210,7 +235,7 @@ docker/
 npm test
 ```
 
-built with Vitest (19 tests)
+built with Vitest (20 tests)
 
 ```bash
 npm run lint
@@ -250,7 +275,7 @@ register it in `index.ts` and it becomes part of the pipeline
 ---
 
 ## ROADMAP
-- WebSocket ingress/egress;
+- WebSocket egress support;
 - YAML routing config;
 - Dead letter queue;
 - Retry with backoff;

@@ -1,6 +1,7 @@
 import { CONFIG } from './config';
 import { MqttIngressAdapter } from './adapters/mqtt-ingress';
 import { HttpIngressAdapter } from './adapters/http-ingress';
+import { WebSocketIngressAdapter } from './adapters/websocket-ingress';
 import { createWebhookTarget } from './adapters/webhook-egress';
 import { MessageRouter, RouteRule } from './core/router';
 import { Dispatcher } from './core/dispatcher';
@@ -40,7 +41,11 @@ mqtt.on('message', handleMessage);
 const http = new HttpIngressAdapter(CONFIG.http.port);
 http.on('message', handleMessage);
 
+const websocket = new WebSocketIngressAdapter(CONFIG.websocket.port);
+websocket.on('message', handleMessage);
+
 logger.info('DataBridge', `System started!`, {
   mqttBroker: CONFIG.mqtt.brokerUrl,
   httpPort: CONFIG.http.port,
+  websocketPort: CONFIG.websocket.port,
 });

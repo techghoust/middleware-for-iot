@@ -1,3 +1,10 @@
+## in [0.1.1] was added
+- `WebSocketIngressAdapter` - WebSocket input adapter;
+- `WEBSOCKET_PORT` configuration support;
+- README updated with WebSocket usage and docs;
+- `.env.example` updated;
+- 20 tests passing
+
 ## in [0.1.0] was added
 - `BridgeMessage` - unified message format;
 - `MqttIngressAdapter` - MQTT input adapter;
