@@ -99,7 +99,7 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Runs Eclipse Mosquitto on port 1883
+runs Eclipse Mosquitto on port 1883
 
 ### run the system
 
@@ -107,7 +107,7 @@ Runs Eclipse Mosquitto on port 1883
 npm run dev
 ```
 
-Expected output:
+expected output:
 
 ```
 [INFO] Dispatcher registered target: console
