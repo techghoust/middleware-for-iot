@@ -1,7 +1,7 @@
 import { BridgeMessage } from '../types/bridge-message';
 import { DispatchTarget } from '../core/dispatcher';
 
-export function createWebhookTarget(name: string, url: string): DispatchTarget {
+export function createWebhookTarget(name: string, url: string, timeoutMs = 5000): DispatchTarget {
   return {
     name,
     send: async (msg: BridgeMessage) => {
@@ -9,8 +9,10 @@ export function createWebhookTarget(name: string, url: string): DispatchTarget {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(msg),
+        signal: AbortSignal.timeout(timeoutMs),
       });
 
+      await response.body?.cancel();
       if (!response.ok) {
         throw new Error(`[Webhook] Failed to send to ${url}: ${response.status}`);
       }

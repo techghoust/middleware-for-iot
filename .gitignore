@@ -3,3 +3,5 @@ dist/
 .env
 *.log
 docker/
+data/
+logs/

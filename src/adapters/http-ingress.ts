@@ -25,7 +25,11 @@ export class HttpIngressAdapter extends EventEmitter {
       }
     });
 
-    this.server.listen({ port, host: '0.0.0.0' }, () => {
+    this.server.listen({ port, host: '0.0.0.0' }, (error) => {
+      if (error) {
+        logger.error('HTTP', 'Failed to listen', { error: String(error), port });
+        return;
+      }
       logger.info('HTTP', `Listening on port ${port}`);
     });
   }

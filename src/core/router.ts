@@ -34,7 +34,7 @@ export class MessageRouter {
     if (pattern === '*') return true;
 
     if (pattern.endsWith('.*')) {
-      const prefix = pattern.slice(0, -2);
+      const prefix = pattern.slice(0, -1);
       return type.startsWith(prefix);
     }
 

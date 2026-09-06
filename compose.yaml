@@ -1,0 +1,50 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - '127.0.0.1:1883:1883'
+    volumes:
+      - ./demo/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'mosquitto_pub -h localhost -t health -m ok']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  webhook:
+    image: node:24-alpine
+    working_dir: /demo
+    command: ['node', 'webhook.cjs']
+    environment:
+      FAIL_FIRST: '${DEMO_FAIL_FIRST:-0}'
+    volumes:
+      - ./demo:/demo:ro
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+  bridge:
+    build: .
+    environment:
+      MQTT_BROKER_URL: mqtt://mqtt:1883
+      MQTT_TOPICS: home/#
+      WEBHOOK_URL: http://webhook:3001/events
+      WEBHOOK_TIMEOUT_MS: '2000'
+      WEBHOOK_ATTEMPTS: '3'
+      WEBHOOK_RETRY_DELAY_MS: '500'
+      DEAD_LETTER_PATH: /app/data/dead-letters.jsonl
+    volumes:
+      - bridge-data:/app/data
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      webhook:
+        condition: service_healthy
+volumes:
+  bridge-data:

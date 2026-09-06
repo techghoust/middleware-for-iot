@@ -12,6 +12,13 @@ const mockMessage = (type: string): BridgeMessage => ({
 });
 
 describe('MessageRouter', () => {
+  it('requires the dot separator for namespace wildcards', () => {
+    const router = new MessageRouter([
+      { name: 'telemetry', match: { type: 'telemetry.*' }, destinations: ['webhook'] },
+    ]);
+    expect(router.route(mockMessage('telemetryOther'))).toEqual([]);
+    expect(router.route(mockMessage('telemetry'))).toEqual([]);
+  });
   it('routes message to correct destination', () => {
     const router = new MessageRouter([
       {
