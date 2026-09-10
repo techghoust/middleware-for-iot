@@ -128,21 +128,26 @@ expected output:
 
 ## reproducible MQTT -> webhook demo
 
-from the `databridge` directory, with Docker Desktop running:
+from the `databridge` directory:
 
 ```sh
 docker compose up --build -d
 docker compose logs -f bridge webhook
 ```
 
-wait for the bridge to report its MQTT subscription, then publish in another terminal:
+wait for the MQTT subscription, then publish a message in another terminal:
 
 ```sh
 docker compose exec mqtt mosquitto_pub -h localhost -t home/room42/temperature -m '{"value":23.4,"unit":"celsius"}'
 ```
 
-the webhook log should contain status 200 and a normalized telemetry.temperature message.
-the anonymous demo broker is exposed only on localhost; the webhook and bridge use the internal Compose network.
+expected result:
+
+- the bridge receives `telemetry.temperature`;
+- the webhook returns status `200`;
+- the webhook log contains the normalized message
+
+the anonymous demo broker is available only on localhost. the bridge and webhook communicate through the internal Compose network.
 
 ### exercise failures (PowerShell)
 
@@ -151,32 +156,79 @@ $env:DEMO_FAIL_FIRST = '2'
 docker compose up -d --force-recreate webhook
 ```
 
-publish a new message: the webhook reports 503, 503, then 200 with the same message ID.
-set DEMO_FAIL_FIRST to 99 and recreate the webhook again to exhaust all three attempts.
-after publishing another message, inspect its failure record:
+publish a new message. the webhook returns `503`, `503`, then `200` with the same message ID.
+
+to exhaust all attempts:
+
+1. set `DEMO_FAIL_FIRST` to `99`;
+2. recreate the webhook;
+3. publish another message;
+4. inspect the failure record:
 
 ```sh
 docker compose exec bridge cat /app/data/dead-letters.jsonl
 ```
 
-reset DEMO_FAIL_FIRST to 0 and recreate the webhook for normal operation.
-use `docker compose down` to stop the demo; the named data volume is retained.
+to restore normal operation, set `DEMO_FAIL_FIRST` to `0` and recreate the webhook.
+
+stop the demo:
+
+```sh
+docker compose down
+```
+
+the named data volume is retained.
 
 ### delivery contract
 
-WEBHOOK_URL enables webhook routing; without it messages go only to the console.
-WEBHOOK_TIMEOUT_MS bounds each request. WEBHOOK_ATTEMPTS includes the initial attempt.
-WEBHOOK_RETRY_DELAY_MS doubles between retries and is capped at 60 seconds.
-after exhaustion, a JSONL record with the full message, destination, error and attempt count
-is appended to DEAD_LETTER_PATH. persistence errors are logged explicitly. replay is manual.
-retries can produce duplicates; receivers should deduplicate by BridgeMessage.id.
-this is not a durable input queue: process termination can lose in-flight messages.
-HTTP/WebSocket ok acknowledges normalization and acceptance, not downstream delivery.
+- `WEBHOOK_URL` enables webhook routing. without it, messages go only to the console;
+- `WEBHOOK_TIMEOUT_MS` limits each request;
+- `WEBHOOK_ATTEMPTS` includes the initial attempt;
+- `WEBHOOK_RETRY_DELAY_MS` doubles between retries and is capped at 60 seconds;
+- `DEAD_LETTER_PATH` stores exhausted deliveries as JSONL records
 
-for local development, use Node.js 24, run `docker compose up -d mqtt`,
-then `node demo/webhook.cjs` in another terminal. copy .env.example to .env,
-then run `npm ci` and `npm run dev`. set WEBHOOK_URL in an existing .env to enable forwarding.
-verification: `npm run build`, `npm run lint`, `npm test`.
+each failure record contains the message, destination, error and attempt count. replay is manual.
+
+retries can produce duplicates. receivers should deduplicate messages by `BridgeMessage.id`.
+
+this is not a durable input queue. process termination can lose an in-flight message.
+
+HTTP/WebSocket `ok` confirms normalization and acceptance for processing. it does not confirm downstream delivery.
+
+### local development
+
+requirements:
+
+- Node.js 24;
+- `.env` copied from `.env.example`;
+- `WEBHOOK_URL` configured for forwarding
+
+run the broker:
+
+```sh
+docker compose up -d mqtt
+```
+
+run the webhook in another terminal:
+
+```sh
+node demo/webhook.cjs
+```
+
+run the bridge:
+
+```sh
+npm ci
+npm run dev
+```
+
+verification:
+
+```sh
+npm run build
+npm run lint
+npm test
+```
 
 ---
 
