@@ -43,4 +43,18 @@ describe('Logger', () => {
     const output = consoleSpy.mock.calls[0][0] as string;
     expect(output).toContain('42');
   });
+
+  it('redacts sensitive fields', () => {
+    const consoleSpy = vi.spyOn(console, 'log');
+    logger.info('TestModule', 'Safe data', {
+      token: 'private-token',
+      nested: { authorization: 'Bearer private', value: 42 },
+    });
+
+    const output = consoleSpy.mock.calls[0][0] as string;
+    expect(output).not.toContain('private-token');
+    expect(output).not.toContain('Bearer private');
+    expect(output).toContain('[redacted]');
+    expect(output).toContain('42');
+  });
 });

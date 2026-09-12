@@ -14,10 +14,10 @@ export function createWebhookTarget(name: string, url: string, timeoutMs = 5000)
 
       await response.body?.cancel();
       if (!response.ok) {
-        throw new Error(`[Webhook] Failed to send to ${url}: ${response.status}`);
+        throw new Error(`[Webhook] Failed to send: ${response.status}`);
       }
 
-      console.log(`[Webhook] Sent to ${url}: ${msg.type}`);
+      console.log(`[Webhook] Sent: ${msg.type}`);
     },
   };
 }

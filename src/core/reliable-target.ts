@@ -3,6 +3,7 @@ import { dirname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DispatchTarget } from './dispatcher';
 import { logger } from '../observability/logger';
+import { DiagnosticHub } from '../observability/diagnostics';
 
 export interface DeliveryOptions {
   attempts: number;
@@ -10,7 +11,11 @@ export interface DeliveryOptions {
   deadLetterPath: string;
 }
 
-export function reliableTarget(target: DispatchTarget, options: DeliveryOptions): DispatchTarget {
+export function reliableTarget(
+  target: DispatchTarget,
+  options: DeliveryOptions,
+  diagnostics?: DiagnosticHub
+): DispatchTarget {
   if (
     !Number.isInteger(options.attempts) ||
     options.attempts < 1 ||
@@ -38,6 +43,14 @@ export function reliableTarget(target: DispatchTarget, options: DeliveryOptions)
             attempt,
             error: String(error),
           });
+          if (attempt < options.attempts) {
+            diagnostics?.recordRetry(
+              target.name === 'webhook' ? 'webhook' : 'system',
+              `delivery attempt ${attempt} failed; retry scheduled`,
+              message.source.id,
+              { target: target.name, attempt, id: message.id, error: String(error) }
+            );
+          }
           if (attempt < options.attempts)
             await delay(Math.min(options.retryDelayMs * 2 ** (attempt - 1), 60000));
         }

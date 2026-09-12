@@ -12,5 +12,6 @@ export interface BridgeMessage {
     received_at: string;
     processing_ms: number;
     version: string;
+    test?: boolean;
   };
 }

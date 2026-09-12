@@ -1,14 +1,19 @@
 # DATABRIDGE
+
 middleware layer for IoT systems accepts data from multiple sources, normalizes it into a single format and routes it to the right destinations
+
+current version: `1.1.0`
 
 ---
 
 # THE PROBLEM
+
 IoT projects tend to accumulate integrations. an MQTT sensor here, a REST endpoint there, a WebSocket dashboard somewhere else. each one needs its own handling, its own format, its own error logic. at some point you have more glue code than actual code. DataBridge is one layer that handles all of it
 
 ---
 
 ## HOW IT WORKS
+
 every incoming message regardless of where it came from is converted into a `BridgeMessage` and passed through the same pipeline:
 
 ```
@@ -22,9 +27,11 @@ every incoming message regardless of where it came from is converted into a `Bri
             ↓
 [ Webhook / Console ]
 ```
+
 ---
 
 ## CORE IDEA
+
 all incoming data is transformed into a unified `BridgeMessage`:
 
 ```json
@@ -48,36 +55,47 @@ all incoming data is transformed into a unified `BridgeMessage`:
   }
 }
 ```
+
 ---
 
 ## COMPONENTS
 
 ### ingress adapters
+
 - MQTT (Eclipse Mosquitto compatible);
 - HTTP REST (`POST /ingest/:type`)
 - WebSocket ingress (`ws://localhost:3002`)
 
 ### core pipeline
+
 - normalizer: accepts non-null objects (including arrays) and wraps them in a `BridgeMessage`; payload fields are not validated;
 - Router: matches event types using wildcard rules (e.g. `telemetry.*`);
 - Dispatcher: delivers messages to targets with error handling
 
 ### egress adapters
+
 - Webhook (HTTP forwarding);
 - Extensible output system
 
 ### observability
+
 - structured logger: debug / info / warn / error;
 - colored console output;
+- connection state and transition history;
+- bounded event viewer with filtering and search;
+- runtime metrics derived from observed events;
+- opt-in protocol sandbox;
+- WebSocket message debugger;
 - file logs:
   `logs/databridge.log`
   `logs/errors.log`
-  
+
 ---
 
 ## GETTING STARTED
 
 ### requirements
+
 - Node.js 24;
 - Docker (MQTT broker)
 
@@ -124,6 +142,7 @@ expected output:
 [INFO] MQTT subscribed to home/#
 [INFO] WebSocket listening on port 3002
 ```
+
 ---
 
 ## reproducible MQTT -> webhook demo
@@ -232,9 +251,53 @@ npm test
 
 ---
 
+## DIAGNOSTICS
+
+start DataBridge and open:
+
+```text
+http://localhost:3000/diagnostics
+```
+
+the dashboard is enabled by default during local development. under `NODE_ENV=production`, set `DIAGNOSTICS_ENABLED=true` explicitly. do not expose the diagnostics routes to an untrusted network without access control.
+
+the dashboard shows:
+
+- current MQTT and WebSocket connection states;
+- recent state transitions;
+- bounded event and message history;
+- event category filters and text search;
+- received, sent, error, reconnect and observed latency metrics;
+- a WebSocket test-message debugger;
+- protocol simulation controls
+
+connection states reflect events the middleware can actually observe. WebSocket clients are tracked separately. MQTT state describes the broker connection because MQTT messages do not expose a persistent device connection to this process.
+
+### protocol sandbox
+
+simulation is disabled by default. enable it from the dashboard or with `SANDBOX_ENABLED=true`.
+
+available conditions:
+
+- artificial message latency;
+- timeout and retry transitions when latency reaches the configured timeout;
+- application-level message loss;
+- one-shot connection interruption and reconnect simulation
+
+active settings are always shown at the top of the dashboard. use `disable / reset` to clear all simulation settings.
+
+simulation changes only application-level message handling. it does not modify the operating system or physical network.
+
+`SANDBOX_LOSS_RATE` uses a value from `0` to `1`. for example, `0.25` means 25% simulated loss.
+
+events are limited by `DIAGNOSTICS_MAX_EVENTS`. inactive connection history is limited by `DIAGNOSTICS_MAX_CONNECTIONS`. active connections remain visible. fields named like passwords, tokens, authorization headers, cookies and API keys are redacted before display or logging.
+
+---
+
 ## SENDING DATA
 
 ### mqtt
+
 topics:
 
 ```
@@ -285,6 +348,7 @@ the adapter will reply with:
 ```
 
 `ok: true` means the message was normalized and accepted for processing. it does not confirm delivery to a destination.
+
 ---
 
 ## configuration
@@ -295,7 +359,15 @@ MQTT_TOPICS=home/#
 HTTP_PORT=3000
 WEBSOCKET_PORT=3002
 LOG_LEVEL=info
+DIAGNOSTICS_ENABLED=true
+DIAGNOSTICS_MAX_EVENTS=500
+DIAGNOSTICS_MAX_CONNECTIONS=1000
+SANDBOX_ENABLED=false
+SANDBOX_LATENCY_MS=0
+SANDBOX_LOSS_RATE=0
+SANDBOX_TIMEOUT_MS=0
 ```
+
 ---
 
 ## PROJECT STRUCTURE
@@ -312,11 +384,14 @@ src/
     normalizer.ts
     router.ts
     dispatcher.ts
+    reliable-target.ts
 
   types/
     bridge-message.ts
 
   observability/
+    dashboard.ts
+    diagnostics.ts
     logger.ts
 
   config.ts
@@ -332,9 +407,16 @@ tests/
   websocket-ingress.test.ts
   webhook-egress.test.ts
   logger.test.ts
+  diagnostics.test.ts
+  diagnostics-http.test.ts
+  websocket-diagnostics.test.ts
 
-docker/
+demo/
   mosquitto.conf
+  webhook.cjs
+
+compose.yaml
+Dockerfile
 
 .github/
   workflows/
@@ -343,6 +425,7 @@ docker/
     bug_report.md
     feature_request.md
 ```
+
 ---
 
 ## TESTING
@@ -357,9 +440,11 @@ built with Vitest
 npm run lint
 npm run format
 ```
+
 ---
 
 ## ADDING A NEW ADAPTER
+
 all ingress adapters emit a normalized BridgeMessage:
 
 ```typescript
@@ -380,6 +465,7 @@ register it in `index.ts` and it becomes part of the pipeline
 ---
 
 ## TECH STACK
+
 - Node.js + TypeScript;
 - Fastify;
 - mqtt.js;
@@ -387,23 +473,25 @@ register it in `index.ts` and it becomes part of the pipeline
 - Vitest;
 - Docker (Mosquitto);
 - ESLint + Prettier
-  
+
 ---
 
 ## ROADMAP
+
 - WebSocket egress support;
 - YAML routing config;
 - automatic dead-letter replay;
 - durable input queue;
-- Web dashboard;
 - npm package release
-  
+
 ---
 
 ## LICENCE
+
 MIT
 
 ---
 
 ## CONTRIBUTING
+
 see [CONTRIBUTING.md](CONTRIBUTING.md)

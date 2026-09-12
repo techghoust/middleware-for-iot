@@ -2,7 +2,12 @@ import { BridgeMessage } from '../types/bridge-message';
 import { randomUUID } from 'crypto';
 import { logger } from '../observability/logger';
 
-export function normalize(adapter: string, topic: string, rawData: unknown): BridgeMessage {
+export function normalize(
+  adapter: string,
+  topic: string,
+  rawData: unknown,
+  options: { sourceId?: string; test?: boolean } = {}
+): BridgeMessage {
   const receivedAt = new Date().toISOString();
 
   if (typeof rawData !== 'object' || rawData === null) {
@@ -14,7 +19,7 @@ export function normalize(adapter: string, topic: string, rawData: unknown): Bri
     id: randomUUID(),
     source: {
       adapter: adapter,
-      id: topic,
+      id: options.sourceId ?? topic,
       topic: topic,
     },
     timestamp: receivedAt,
@@ -24,6 +29,7 @@ export function normalize(adapter: string, topic: string, rawData: unknown): Bri
       received_at: receivedAt,
       processing_ms: 0,
       version: '1.0',
+      ...(options.test ? { test: true } : {}),
     },
   };
 

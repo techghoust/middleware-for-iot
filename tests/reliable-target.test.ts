@@ -8,6 +8,7 @@ import { createWebhookTarget } from '../src/adapters/webhook-egress';
 import { normalize } from '../src/core/normalizer';
 import { MessageRouter } from '../src/core/router';
 import { Dispatcher } from '../src/core/dispatcher';
+import { DiagnosticHub } from '../src/observability/diagnostics';
 
 const directories: string[] = [];
 const servers: Server[] = [];
@@ -110,16 +111,20 @@ describe('Reliable webhook delivery', () => {
 
   it('stops retrying after success', async () => {
     const options = await fixture();
+    const diagnostics = new DiagnosticHub();
     const send = vi
       .fn()
       .mockRejectedValueOnce(new Error('first'))
       .mockRejectedValueOnce(new Error('second'))
       .mockResolvedValue(undefined);
-    const result = reliableTarget({ name: 'webhook', send }, { ...options, retryDelayMs: 10 }).send(
-      normalize('mqtt', 'home/temp', {})
-    );
+    const result = reliableTarget(
+      { name: 'webhook', send },
+      { ...options, retryDelayMs: 10 },
+      diagnostics
+    ).send(normalize('mqtt', 'home/temp', {}));
     await result;
     expect(send).toHaveBeenCalledTimes(3);
+    expect(diagnostics.listEvents({ category: 'retry' })).toHaveLength(2);
   });
 
   it('preserves separate records for concurrent failures', async () => {

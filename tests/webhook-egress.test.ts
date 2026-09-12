@@ -34,8 +34,6 @@ describe('WebhookEgressAdapter', () => {
 
     const target = createWebhookTarget('test-webhook', 'https://example.com/hook');
 
-    await expect(target.send(mockMessage())).rejects.toThrow(
-      'Failed to send to https://example.com/hook: 500'
-    );
+    await expect(target.send(mockMessage())).rejects.toThrow('Failed to send: 500');
   });
 });

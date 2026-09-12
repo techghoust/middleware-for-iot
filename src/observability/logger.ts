@@ -1,5 +1,6 @@
 import { appendFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { redactSensitive } from './diagnostics';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -26,7 +27,7 @@ const COLORS = {
 };
 
 function formatEntry(entry: LogEntry): string {
-  const data = entry.data ? ` | ${JSON.stringify(entry.data)}` : '';
+  const data = entry.data ? ` | ${JSON.stringify(redactSensitive(entry.data))}` : '';
   return `[${entry.timestamp}] [${entry.level.toUpperCase()}] [${entry.module}] ${entry.message}${data}`;
 }
 
