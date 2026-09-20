@@ -63,7 +63,6 @@ export function reliableTarget(
           error: String(lastError),
           message,
         }) + '\n';
-      // Serialize JSONL writes when multiple deliveries fail concurrently.
       const pending = writes.then(async () => {
         await mkdir(dirname(options.deadLetterPath), { recursive: true });
         await appendFile(options.deadLetterPath, record, 'utf8');
