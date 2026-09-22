@@ -6,12 +6,6 @@ current version: `1.1.0`
 
 ---
 
-# THE PROBLEM?
-
-IoT projects tend to accumulate integrations. an MQTT sensor here, a REST endpoint there, a WebSocket dashboard somewhere else. each one needs its own handling, its own format, its own error logic. at some point you have more glue code than actual code. DataBridge is one layer that handles all of it
-
----
-
 ## HOW IT WORKS
 
 every incoming message regardless of where it came from is converted into a `BridgeMessage` and passed through the same pipeline:
