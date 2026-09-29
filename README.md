@@ -2,7 +2,7 @@
 
 middleware layer for IoT systems accepts data from multiple sources, normalizes it into a single format and routes it to the right destinations
 
-current version: `1.1.0`
+current version: `1.2.0`
 
 ---
 
@@ -198,9 +198,12 @@ the named data volume is retained.
 - `WEBHOOK_TIMEOUT_MS` limits each request;
 - `WEBHOOK_ATTEMPTS` includes the initial attempt;
 - `WEBHOOK_RETRY_DELAY_MS` doubles between retries and is capped at 60 seconds;
-- `DEAD_LETTER_PATH` stores exhausted deliveries as JSONL records
+- `DEAD_LETTER_PATH` stores exhausted deliveries as JSONL records;
+- `DEAD_LETTER_REPLAY_ENABLED` enables background replay;
+- `DEAD_LETTER_REPLAY_INTERVAL_MS` controls how often replay runs;
+- `DEAD_LETTER_REPLAY_BATCH_SIZE` limits each replay cycle
 
-each failure record contains the message, destination, error and attempt count. replay is manual.
+each failure record contains the message, destination, error and attempt count. when replay is enabled, DataBridge retries a bounded batch at startup and then at the configured interval. delivered records are removed. failed and malformed records remain in the file. replay attempts and the latest replay error are stored with records that fail again.
 
 retries can produce duplicates. receivers should deduplicate messages by `BridgeMessage.id`.
 
@@ -360,6 +363,9 @@ SANDBOX_ENABLED=false
 SANDBOX_LATENCY_MS=0
 SANDBOX_LOSS_RATE=0
 SANDBOX_TIMEOUT_MS=0
+DEAD_LETTER_REPLAY_ENABLED=true
+DEAD_LETTER_REPLAY_INTERVAL_MS=30000
+DEAD_LETTER_REPLAY_BATCH_SIZE=10
 ```
 
 ---
@@ -379,6 +385,7 @@ src/
     router.ts
     dispatcher.ts
     reliable-target.ts
+    dead-letter-replay.ts
 
   types/
     bridge-message.ts
@@ -474,7 +481,6 @@ register it in `index.ts` and it becomes part of the pipeline
 
 - WebSocket egress support;
 - YAML routing config;
-- automatic dead-letter replay;
 - durable input queue;
 - npm package release
 

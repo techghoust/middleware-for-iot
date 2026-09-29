@@ -1,5 +1,6 @@
 import { CONFIG } from './config';
 import { reliableTarget } from './core/reliable-target';
+import { DeadLetterReplayer, DeadLetterStore } from './core/dead-letter-replay';
 import { MqttIngressAdapter } from './adapters/mqtt-ingress';
 import { HttpIngressAdapter } from './adapters/http-ingress';
 import { WebSocketIngressAdapter } from './adapters/websocket-ingress';
@@ -36,14 +37,24 @@ dispatcher.register({
   },
 });
 
+let deadLetterReplayer: DeadLetterReplayer | undefined;
 if (CONFIG.webhook.url) {
-  dispatcher.register(
-    reliableTarget(
-      createWebhookTarget('webhook', CONFIG.webhook.url, CONFIG.webhook.timeoutMs),
-      CONFIG.webhook,
-      diagnostics
-    )
+  const webhookTarget = createWebhookTarget(
+    'webhook',
+    CONFIG.webhook.url,
+    CONFIG.webhook.timeoutMs
   );
+  const deadLetters = new DeadLetterStore(CONFIG.webhook.deadLetterPath);
+  dispatcher.register(reliableTarget(webhookTarget, CONFIG.webhook, diagnostics, deadLetters));
+  if (CONFIG.webhook.replay.enabled) {
+    deadLetterReplayer = new DeadLetterReplayer(
+      deadLetters,
+      webhookTarget,
+      CONFIG.webhook.replay,
+      diagnostics
+    );
+    deadLetterReplayer.start();
+  }
 } else {
   logger.warn('DataBridge', 'WEBHOOK_URL is unset; only console delivery is enabled');
 }
@@ -116,7 +127,11 @@ async function shutdown(signal: string): Promise<void> {
     status: 'stopping',
   });
   mqtt.disconnect();
-  const results = await Promise.allSettled([http.stop(), websocket.stop()]);
+  const results = await Promise.allSettled([
+    deadLetterReplayer?.stop(),
+    http.stop(),
+    websocket.stop(),
+  ]);
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length > 0) {
     logger.error('DataBridge', 'Shutdown completed with errors', { failures: failures.length });

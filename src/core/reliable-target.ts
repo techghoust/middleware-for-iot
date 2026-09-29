@@ -1,9 +1,8 @@
-import { appendFile, mkdir } from 'node:fs/promises';
-import { dirname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { DispatchTarget } from './dispatcher';
 import { logger } from '../observability/logger';
 import { DiagnosticHub } from '../observability/diagnostics';
+import { DeadLetterStore } from './dead-letter-replay';
 
 export interface DeliveryOptions {
   attempts: number;
@@ -14,7 +13,8 @@ export interface DeliveryOptions {
 export function reliableTarget(
   target: DispatchTarget,
   options: DeliveryOptions,
-  diagnostics?: DiagnosticHub
+  diagnostics?: DiagnosticHub,
+  deadLetters = new DeadLetterStore(options.deadLetterPath)
 ): DispatchTarget {
   if (
     !Number.isInteger(options.attempts) ||
@@ -26,7 +26,6 @@ export function reliableTarget(
     !options.deadLetterPath.trim()
   )
     throw new Error('Invalid delivery options');
-  let writes = Promise.resolve();
   return {
     name: target.name,
     async send(message) {
@@ -55,21 +54,14 @@ export function reliableTarget(
             await delay(Math.min(options.retryDelayMs * 2 ** (attempt - 1), 60000));
         }
       }
-      const record =
-        JSON.stringify({
+      try {
+        await deadLetters.append({
           failedAt: new Date().toISOString(),
           destination: target.name,
           attempts: options.attempts,
           error: String(lastError),
           message,
-        }) + '\n';
-      const pending = writes.then(async () => {
-        await mkdir(dirname(options.deadLetterPath), { recursive: true });
-        await appendFile(options.deadLetterPath, record, 'utf8');
-      });
-      writes = pending.catch(() => undefined);
-      try {
-        await pending;
+        });
       } catch (error) {
         throw new Error('Delivery AND dead-letter persistence failed: ' + String(error));
       }

@@ -1,3 +1,9 @@
+## [1.2.0]
+
+### added
+
+- optional automatic dead-letter replay with bounded batches, interval configuration and graceful shutdown
+
 ## [1.1.0]
 
 ### added

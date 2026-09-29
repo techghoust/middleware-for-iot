@@ -48,6 +48,11 @@ export const CONFIG = {
     attempts: integer('WEBHOOK_ATTEMPTS', 3, 1, 10),
     retryDelayMs: integer('WEBHOOK_RETRY_DELAY_MS', 500, 0, 60000),
     deadLetterPath: process.env.DEAD_LETTER_PATH || 'data/dead-letters.jsonl',
+    replay: {
+      enabled: flag('DEAD_LETTER_REPLAY_ENABLED', false),
+      intervalMs: integer('DEAD_LETTER_REPLAY_INTERVAL_MS', 30000, 100, 86400000),
+      batchSize: integer('DEAD_LETTER_REPLAY_BATCH_SIZE', 10, 1, 1000),
+    },
   },
   mqtt: {
     brokerUrl: process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883',
